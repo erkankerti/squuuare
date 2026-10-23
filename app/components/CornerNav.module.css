@@ -1,6 +1,7 @@
 .icon {
   position: fixed;
   top: 20px;
+  left: 20px;
   z-index: 10;
   display: grid;
   place-items: center;
@@ -35,14 +36,6 @@
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.left {
-  left: 20px;
-}
-
-.right {
-  right: 20px;
 }
 
 @keyframes fade-in {

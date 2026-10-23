@@ -179,7 +179,7 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
 
   return (
     <main className={styles.stage} data-ready={state.hydrated || undefined}>
-      <CornerNav back onRestart={restart} />
+      <CornerNav back />
 
       {task && state.phase !== "finished" && (
         <section
@@ -193,7 +193,12 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
               {state.taskIndex + 1} of {tasks.length}
             </p>
             <h1 className={styles.title}>{task.title}</h1>
-            <ProgressLines lit={state.linesLit} disabled={raised} onAdvance={advance} />
+            <ProgressLines
+              key={task.id}
+              lit={state.linesLit}
+              disabled={raised}
+              onAdvance={advance}
+            />
           </div>
         </section>
       )}

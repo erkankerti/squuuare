@@ -23,11 +23,13 @@ export function ProgressLines({ lit, disabled, onAdvance }: Props) {
     >
       <span className={styles.lines}>
         {Array.from({ length: LINE_COUNT }, (_, i) => (
-          <span key={i} className={styles.line} data-lit={i < lit || undefined} />
+          <span
+            key={i}
+            className={styles.line}
+            data-lit={i < lit || undefined}
+            data-pulse={i === 0 && lit === 0 || undefined}
+          />
         ))}
-      </span>
-      <span className={styles.hint} data-hidden={lit > 0 || undefined} aria-hidden>
-        tap when you make progress
       </span>
     </button>
   );
