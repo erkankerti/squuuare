@@ -1,0 +1,143 @@
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 100dvh;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 600ms var(--ease-out);
+}
+
+.stage[data-ready] {
+  opacity: 1;
+}
+
+.taskLayer,
+.answerLayer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.taskLayer > *,
+.answerLayer > * {
+  pointer-events: auto;
+}
+
+/* Task block: slides up once the last line is lit */
+
+.taskLayer {
+  transition:
+    transform 600ms var(--ease-out),
+    opacity 600ms var(--ease-out);
+}
+
+.taskLayer[data-raised] {
+  transform: translateY(clamp(-280px, -28vh, -170px)) scale(0.85);
+  opacity: 0.5;
+}
+
+.taskLayer[data-leaving] {
+  opacity: 0;
+  transition-duration: 450ms;
+}
+
+.taskInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  max-width: 640px;
+  text-align: center;
+  animation: rise 700ms var(--ease-out) backwards;
+}
+
+.counter {
+  margin-bottom: -16px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.title {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* Question / reflection steps: fade in rising, fade out dropping */
+
+.step {
+  animation: rise 280ms var(--ease-out) var(--delay, 0ms) backwards;
+}
+
+.step[data-exiting] {
+  animation: drop 220ms var(--ease-in) forwards;
+}
+
+.finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation-duration: 700ms;
+}
+
+.reset {
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 200ms var(--ease-out);
+}
+
+.reset:hover {
+  color: var(--foreground);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes drop {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskLayer {
+    transition-property: opacity;
+  }
+
+  .taskInner,
+  .step {
+    animation-name: fade-in;
+  }
+
+  .step[data-exiting] {
+    animation-name: fade-out;
+  }
+}

@@ -1,0 +1,73 @@
+.stage {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.word {
+  padding: 8px 20px;
+  border-radius: 12px;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  transition:
+    background 300ms var(--ease-out),
+    opacity 300ms var(--ease-out);
+  animation: rise 700ms var(--ease-out) backwards;
+}
+
+.word:hover {
+  background: var(--hover);
+}
+
+.word:focus-visible {
+  outline: 1px solid var(--faint);
+  outline-offset: 2px;
+}
+
+.anew {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    color 300ms var(--ease-out),
+    opacity 300ms var(--ease-out);
+  animation: fade-in 900ms var(--ease-out) 400ms backwards;
+}
+
+.anew:hover,
+.anew:focus-visible {
+  color: var(--foreground);
+  opacity: 1;
+  outline: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    animation-name: fade-in;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

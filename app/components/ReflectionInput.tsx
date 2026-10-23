@@ -1,0 +1,57 @@
+"use client";
+
+import { useState } from "react";
+import panel from "./Panel.module.css";
+import styles from "./QuestionCard.module.css";
+
+type Props = {
+  disabled: boolean;
+  onSubmit: (reflection: string) => void;
+};
+
+export function ReflectionInput({ disabled, onSubmit }: Props) {
+  const [text, setText] = useState("");
+  const trimmed = text.trim();
+
+  const submit = () => {
+    if (disabled || !trimmed) return;
+    onSubmit(trimmed);
+  };
+
+  return (
+    <div className={styles.card}>
+      <label className={panel.prompt} htmlFor="reflection">
+        How did it go?
+      </label>
+      <div className={panel.unit}>
+        <textarea
+          id="reflection"
+          className={panel.textarea}
+          value={text}
+          placeholder="A few words about the experience"
+          autoFocus
+          disabled={disabled}
+          rows={3}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <div className={panel.footer}>
+          <span>Enter to finish, Shift+Enter for a new line</span>
+          <button
+            type="button"
+            className={panel.submit}
+            disabled={disabled || !trimmed}
+            onClick={submit}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

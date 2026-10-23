@@ -1,0 +1,39 @@
+.card {
+  width: min(440px, calc(100vw - 48px));
+}
+
+.option {
+  cursor: pointer;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.option:disabled {
+  cursor: default;
+}
+
+.option[data-selected] {
+  background: var(--selected);
+}
+
+.option[data-selected] kbd {
+  opacity: 1;
+}
+
+.freeform {
+  cursor: text;
+}
+
+.freeform:focus-within {
+  background: var(--hover);
+}
+
+.freeform kbd {
+  opacity: 0;
+}
+
+.freeform kbd[data-visible] {
+  opacity: 0.6;
+}
