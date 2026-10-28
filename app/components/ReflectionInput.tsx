@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import panel from "./Panel.module.css";
 import styles from "./QuestionCard.module.css";
 
 type Props = {
+  value: string;
   disabled: boolean;
+  onChange: (value: string) => void;
   onSubmit: (reflection: string) => void;
 };
 
-export function ReflectionInput({ disabled, onSubmit }: Props) {
-  const [text, setText] = useState("");
-  const trimmed = text.trim();
+export function ReflectionInput({ value, disabled, onChange, onSubmit }: Props) {
+  const trimmed = value.trim();
 
   const submit = () => {
     if (disabled || !trimmed) return;
@@ -27,12 +27,12 @@ export function ReflectionInput({ disabled, onSubmit }: Props) {
         <textarea
           id="reflection"
           className={panel.textarea}
-          value={text}
+          value={value}
           placeholder="A few words about the experience"
           autoFocus
           disabled={disabled}
           rows={3}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();

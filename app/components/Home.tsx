@@ -12,9 +12,12 @@ export function Home() {
     <main className={styles.stage}>
       {started !== null && (
         <>
-          <Link key={String(started)} href="/focus" className={styles.word}>
-            {started ? "Continue?" : "hi"}
-          </Link>
+          <div key={String(started)} className={styles.cluster}>
+            {started && <p className={styles.greeting}>welcome back</p>}
+            <Link href="/focus" className={styles.word}>
+              {started ? "continue" : "hi"}
+            </Link>
+          </div>
           {started && (
             <button type="button" className={styles.anew} onClick={clearProgress}>
               begin anew

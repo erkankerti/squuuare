@@ -4,12 +4,17 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useReducer, useRef, type CSSProperties } from "react";
 import { levels, type FocusTask } from "@/app/data/tasks";
 import {
+  clearDraft,
   clearProgress,
+  loadDraft,
   loadTaskIndex,
   markStarted,
+  saveDraft,
   saveSession,
   saveTaskIndex,
   type Answer,
+  type Draft,
+  type DraftPhase,
 } from "@/app/lib/storage";
 import { CornerNav } from "./CornerNav";
 import { LINE_COUNT, ProgressLines } from "./ProgressLines";
@@ -28,45 +33,111 @@ type Phase = "focusing" | "questioning" | "reflecting" | "transitioning" | "fini
 
 type State = {
   hydrated: boolean;
+  resumed: boolean;
   phase: Phase;
   taskIndex: number;
   linesLit: number;
   questionIndex: number;
   answers: Answer[];
+  reflection: string;
   selected: string | null;
   exiting: boolean;
 };
 
 type Action =
-  | { type: "hydrate"; taskIndex: number; taskCount: number }
+  | { type: "hydrate"; taskIndex: number; draft: Draft | null; taskCount: number; tasks: FocusTask[] }
   | { type: "light" }
   | { type: "beginQuestions" }
   | { type: "select"; value: string }
   | { type: "exitStep" }
   | { type: "answer"; answer: Answer; questionCount: number }
+  | { type: "draftReflection"; value: string }
   | { type: "submitReflection" }
   | { type: "nextTask"; taskCount: number };
 
 const freshTask = {
-  phase: "focusing",
+  phase: "focusing" as const,
   linesLit: 0,
   questionIndex: 0,
   answers: [],
+  reflection: "",
   selected: null,
   exiting: false,
+  resumed: false,
 } satisfies Partial<State>;
 
 const initialState: State = { hydrated: false, taskIndex: 0, ...freshTask };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function fromDraft(draft: Draft, task: FocusTask): Pick<
+  State,
+  "phase" | "linesLit" | "questionIndex" | "answers" | "reflection" | "resumed"
+> {
+  const questionCount = task.questions.length;
+  let phase: DraftPhase = draft.phase;
+  let questionIndex = clamp(draft.questionIndex, 0, questionCount);
+  let linesLit = clamp(draft.linesLit, 0, LINE_COUNT);
+
+  if (phase === "questioning" && questionIndex >= questionCount) {
+    phase = "reflecting";
+  }
+  if (phase === "focusing" && linesLit >= LINE_COUNT) {
+    phase = "questioning";
+    questionIndex = Math.min(questionIndex, Math.max(questionCount - 1, 0));
+  }
+  if (phase === "questioning" || phase === "reflecting") {
+    linesLit = LINE_COUNT;
+  }
+
+  return {
+    phase,
+    linesLit,
+    questionIndex,
+    answers: draft.answers,
+    reflection: draft.reflection,
+    resumed: true,
+  };
+}
+
+function toDraft(state: State): Draft | null {
+  if (!state.hydrated || state.phase === "finished") return null;
+  if (state.phase === "transitioning") {
+    return {
+      taskIndex: state.taskIndex + 1,
+      phase: "focusing",
+      linesLit: 0,
+      questionIndex: 0,
+      answers: [],
+      reflection: "",
+    };
+  }
+  return {
+    taskIndex: state.taskIndex,
+    phase: state.phase,
+    linesLit: state.linesLit,
+    questionIndex: state.questionIndex,
+    answers: state.answers,
+    reflection: state.reflection,
+  };
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "hydrate": {
       const taskIndex = Math.min(action.taskIndex, action.taskCount);
+      if (taskIndex >= action.taskCount) {
+        return { ...state, hydrated: true, taskIndex, phase: "finished" };
+      }
+      const task = action.tasks[taskIndex];
+      const draft = action.draft?.taskIndex === taskIndex ? action.draft : null;
       return {
         ...state,
         hydrated: true,
         taskIndex,
-        phase: taskIndex >= action.taskCount ? "finished" : "focusing",
+        ...(draft && task ? fromDraft(draft, task) : freshTask),
       };
     }
     case "light":
@@ -88,6 +159,8 @@ function reducer(state: State, action: Action): State {
         phase: questionIndex >= action.questionCount ? "reflecting" : "questioning",
       };
     }
+    case "draftReflection":
+      return { ...state, reflection: action.value };
     case "submitReflection":
       return { ...state, phase: "transitioning" };
     case "nextTask": {
@@ -105,7 +178,16 @@ function reducer(state: State, action: Action): State {
 export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const timers = useRef<number[]>([]);
+  const latest = useRef(state);
+  const heldDraft = useRef<Draft | null>(null);
   const router = useRouter();
+  latest.current = state;
+
+  const persist = useCallback((next = latest.current) => {
+    const draft = heldDraft.current ?? toDraft(next);
+    if (draft) saveDraft(draft);
+    else clearDraft();
+  }, []);
 
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -113,10 +195,40 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
 
   useEffect(() => {
     markStarted();
-    dispatch({ type: "hydrate", taskIndex: loadTaskIndex(), taskCount: tasks.length });
+    dispatch({
+      type: "hydrate",
+      taskIndex: loadTaskIndex(),
+      draft: loadDraft(),
+      taskCount: tasks.length,
+      tasks,
+    });
     const pending = timers.current;
     return () => pending.forEach(window.clearTimeout);
-  }, [tasks.length]);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (!state.hydrated) return;
+    persist(state);
+  }, [
+    persist,
+    state.hydrated,
+    state.phase,
+    state.taskIndex,
+    state.linesLit,
+    state.questionIndex,
+    state.answers,
+    state.reflection,
+  ]);
+
+  useEffect(() => {
+    const flush = () => persist();
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flush);
+    };
+  }, [persist]);
 
   const task = tasks[state.taskIndex];
   const question = task?.questions[state.questionIndex];
@@ -136,14 +248,25 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
   const answer = useCallback(
     (value: Answer) => {
       if (busy || !task) return;
+      const answers = [...state.answers, value];
+      const questionIndex = state.questionIndex + 1;
+      heldDraft.current = {
+        taskIndex: state.taskIndex,
+        phase: questionIndex >= task.questions.length ? "reflecting" : "questioning",
+        linesLit: LINE_COUNT,
+        questionIndex,
+        answers,
+        reflection: "",
+      };
+      persist();
       dispatch({ type: "select", value: value.value });
       later(() => dispatch({ type: "exitStep" }), SELECT_HOLD);
-      later(
-        () => dispatch({ type: "answer", answer: value, questionCount: task.questions.length }),
-        SELECT_HOLD + STEP_EXIT,
-      );
+      later(() => {
+        heldDraft.current = null;
+        dispatch({ type: "answer", answer: value, questionCount: task.questions.length });
+      }, SELECT_HOLD + STEP_EXIT);
     },
-    [busy, task, later],
+    [busy, task, later, persist, state.answers, state.questionIndex, state.taskIndex],
   );
 
   const reflect = (reflection: string) => {
@@ -177,7 +300,11 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
     state.phase === "transitioning";
 
   const stepStyle = {
-    "--delay": `${state.phase === "questioning" && state.questionIndex === 0 ? FIRST_QUESTION_DELAY : 0}ms`,
+    "--delay": `${
+      state.phase === "questioning" && state.questionIndex === 0 && !state.resumed
+        ? FIRST_QUESTION_DELAY
+        : 0
+    }ms`,
   } as CSSProperties;
 
   return (
@@ -227,7 +354,12 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
       {state.phase === "reflecting" && (
         <section className={styles.answerLayer}>
           <div key="reflection" className={styles.step} data-exiting={state.exiting || undefined}>
-            <ReflectionInput disabled={busy} onSubmit={reflect} />
+            <ReflectionInput
+              value={state.reflection}
+              disabled={busy}
+              onChange={(value) => dispatch({ type: "draftReflection", value })}
+              onSubmit={reflect}
+            />
           </div>
         </section>
       )}
