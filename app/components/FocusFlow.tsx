@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useReducer, useRef, type CSSProperties } from "react";
-import type { FocusTask } from "@/app/data/tasks";
+import { levels, type FocusTask } from "@/app/data/tasks";
 import {
   clearProgress,
   loadTaskIndex,
@@ -120,6 +120,9 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
 
   const task = tasks[state.taskIndex];
   const question = task?.questions[state.questionIndex];
+  const levelTasks = tasks.filter((t) => t.level === task?.level);
+  const levelPosition = levelTasks.indexOf(task) + 1;
+  const levelName = levels.find((l) => l.id === task?.level)?.name;
   const busy = state.selected !== null || state.exiting;
 
   const advance = () => {
@@ -190,7 +193,7 @@ export function FocusFlow({ tasks }: { tasks: FocusTask[] }) {
         >
           <div className={styles.taskInner}>
             <p className={styles.counter}>
-              {state.taskIndex + 1} of {tasks.length}
+              {levelName} · {levelPosition} of {levelTasks.length}
             </p>
             <h1 className={styles.title}>{task.title}</h1>
             <ProgressLines
